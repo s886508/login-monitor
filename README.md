@@ -65,3 +65,29 @@ $ make run FILEPATH=testData/test2.txt
 2025/10/27 21:15:56 Main exit
 make: *** [Makefile:10: run] Interrupt
 ```
+
+# Design
+## Events Orderings
+This is one of the major design for my tool that the events could be out of orders. Meanwhile the tool checkes the events with ealier timestamp to make corresponding handlings.
+
+## Alert
+The alert from the design document does not mention the exact context of `TimeWindow` and `Events`. So I mades assumption that what the user would like to see while receiving the alert.
+1. TimeWindow: The duration of 3 consecutive failed login within 30 seconds. The unit is seoncds as well.
+2. Events: The failed login events in the past history before a successfully log in. So the `FailedCount` is counted for the length of `Events` as well.
+
+# Future Integration
+## Message Queue (Input strategy)
+The events are better leverage either one of the message queue system for consitency, fault tolerance and system resume as a consideration. For example, using Kafka as an upstream to pass in the log in events or a downstream as an alert notification system. The message queue is able to connect the current monitoring service with other serivce to expand its capabilities and usages. Also, the message queue usaually do replicas to avoid data loss and help the service to restore from specific time point.
+
+The serivce has defined an interface to different approaches to be implemented. Please check [input.go](https://github.com/s886508/ruckus-assignment/blob/main/pkg/input/input.go) for more details. The interface can also be expanded if needed.
+
+## Storage
+Right now, the service is using in-memory to store the events, alerts. This can be achieved in such way if the data volume is extremely small. In the real world, log in events should be a high data volume events and will need other storage, such as cache, persistent storage (database etc...). It can be both to speed up the service while querying log in events. There are couple advantage of the design.
+1. Persisten storage: The table schema and index can be levarage here to improve the overall query effieciency compared to in-memory storage if the data volume of log in events is high.
+2. Retention: The data can set retention per users or other strategy to keep better query performance.
+3. Service Down and Recovery: With persisten storage, the log in events will less likely to be loss compared to in-memory storage and able to keep the alerting service working as expected robustly.
+
+## Scalability
+To improve overall system performance, the service shoudl be able to be deployed as a microservice and can be deployed as multiple instance. With the message queue and persisten storage, this can be a stateless service and scale up as needed. In the mean time, take kafka as an example, the partitions and retention settings can be different or configurable to tolerate more high data volume and to be more real-time processing to send alert in time to the end users.
+
+Also, there are few couple go channel buffer that can be setup with a configurable settings to achiever hight throughpyt overall. This can be implemented later on as needed. 
