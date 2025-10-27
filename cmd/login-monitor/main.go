@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sender := &alerting.Sender{}
+	sender := &alerting.AlertSender{}
 	sender.Init(ctx)
 	consumer := &consumer.LoginEventConsumer{}
 	consumer.Init(ctx, sender.Buffer)
