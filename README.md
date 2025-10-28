@@ -54,6 +54,41 @@ testData/test2.txt
 2025/10/27 21:15:28 Received alert: {"user_id":"A","failed_count":4,"time_window":"10.000 seconds","events":[{"user_id":"A","timestamp":"2025-10-26T14:36:11Z","success":false},{"user_id":"A","timestamp":"2025-10-26T14:40:01Z","success":false},{"user_id":"A","timestamp":"2025-10-26T14:40:05Z","success":false},{"user_id":"A","timestamp":"2025-10-26T14:40:11Z","success":false}]}
 ```
 
+# Simulation Tool
+The tool is able to generate testing input files with given arguments. Pleas see below for the usage:
+```shell
+$ go run testData/simulator.go --help
+Usage of /home/will/.cache/go-build/fa/fa68702c24857c823d0fe26b345102c559f27fbd5088eef8f96f884b664b7b3d-d/simulator:
+  -filePath string
+        File paht to store the simulation events (default "simulateTestFile.txt")
+  -nums int
+        Number of events to generate log in events (default 20)
+  -timeOffset int
+        Time offset to simulate per event in seconds, it will generate timestamp with -timeOffset < time < timeOffset (default 10)
+```
+
+Example to generate 500K data to input:
+```shell
+$ go run testData/simulator.go --nums 500000 -timeOffset 40
+2025/10/28 13:10:18 Simulate file generated: simulateTestFile.txt
+```
+
+Test with the testing file:
+```shell
+$ make run FILEPATH=simulateTestFile.txt
+...
+^C2025/10/28 13:23:00 Received signal: interrupt
+2025/10/28 13:23:00 Sender close
+2025/10/28 13:23:00 Consumer close
+2025/10/28 13:23:00 [Metrics]
+  TotalEventProcessed: 500000
+  TotalInvalidEvents 0
+  TotalFailedLoginEvents: 3084
+  TotalAlertSent: 389
+  AvgEventProcessingDuration(nanoSeconds): 80
+2025/10/28 13:23:00 Main exit
+```
+
 # Graceful Shutdown
 The tool is listening to few signal and will lead graceful shutdown for each goroutines before exising the tool.
 ```shell
