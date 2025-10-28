@@ -55,7 +55,7 @@ testData/test2.txt
 ```
 
 # Simulation Tool
-The tool is able to generate testing input files with given arguments. Pleas see below for the usage:
+The tool is able to generate testing input file with given arguments. Please see below for the usage:
 ```shell
 $ go run testData/simulator.go --help
 Usage of /home/will/.cache/go-build/fa/fa68702c24857c823d0fe26b345102c559f27fbd5088eef8f96f884b664b7b3d-d/simulator:
