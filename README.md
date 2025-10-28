@@ -2,7 +2,7 @@
 The program is simulating an alert system which receive log in events and record the events. An alert will be trigger and being sent if there are 3 consecutive failed log in with 30 seconds.
 
 # How to Build
-Run the following command and the binary will be build under `/dist` directory
+Run the following command and the binary will be build under `dist` directory
 ```shell
 $ make build
 go mod tidy
@@ -13,9 +13,10 @@ github.com/s886508/ruckus-assignment/pkg/alerting
 ```
 
 # Run the Tool
-It is only support reading events in JSON format line by line as following from a file.
+It only supports reading events in JSON format line by line as following from a file.
 
-**Note** The `timestamp` is using default format `RFC3339` that can be load into time.Time package.
+**Note** The `timestamp` is using default format `RFC3339` that can be load into time.Time go package.
+
 ```json
 {"user_id":"A","timestamp":"2025-10-26T14:30:00+00:00","success":false}
 {"user_id":"A","timestamp":"2025-10-26T14:30:01+00:00","success":false}
@@ -27,7 +28,6 @@ It is only support reading events in JSON format line by line as following from 
 $ make run FILEPATH=testData/test2.txt
 go mod tidy
 go build -v -o ./dist/login-monitor ./cmd/login-monitor/main.go
-testData/test2.txt
 ./dist/login-monitor --filePath "testData/test2.txt"
 2025/10/27 21:15:28 Record fail event: 2025-10-26 14:30:00 +0000 +0000
 2025/10/27 21:15:28 Record fail event: 2025-10-26 14:30:01 +0000 +0000
@@ -69,7 +69,7 @@ Usage of /home/will/.cache/go-build/fa/fa68702c24857c823d0fe26b345102c559f27fbd5
 
 Example to generate 500K data to input:
 ```shell
-$ go run testData/simulator.go --nums 500000 -timeOffset 40
+$ go run testData/simulator.go -nums 500000 -timeOffset 40
 2025/10/28 13:10:18 Simulate file generated: simulateTestFile.txt
 ```
 
@@ -116,7 +116,8 @@ ok      github.com/s886508/ruckus-assignment/pkg/model  0.008s
 ```
 
 # Graceful Shutdown
-The tool is listening to few signal and will lead graceful shutdown for each goroutines before exising the tool.
+The tool is listening to few signal and will do graceful shutdown for each goroutine before exiting the tool.
+
 ```shell
 $ make run FILEPATH=testData/test2.txt
 ...
@@ -124,23 +125,22 @@ $ make run FILEPATH=testData/test2.txt
 2025/10/27 21:15:56 Consumer close
 2025/10/27 21:15:56 Sender close
 2025/10/27 21:15:56 Main exit
-make: *** [Makefile:10: run] Interrupt
 ```
 
 # Design
 ## Events Orderings
-This is one of the major design for my tool that the events could be out of orders. Meanwhile the tool checkes the events with ealier timestamp to make corresponding handlings.
+This is one of the major design for my tool that the events could be out of orders. Meanwhile the tool checkes the events with ealier timestamp to make corresponding handlings properly.
 
 ## Alert
-The alert from the design document does not mention the exact context of `TimeWindow` and `Events`. So I mades assumption that what the user would like to see while receiving the alert.
+The alert from the design document does not mention the exact context of `TimeWindow` and `Events`. So I made assumptions that what the user would like to see while receiving the alert.
 1. TimeWindow: The duration of 3 consecutive failed login within 30 seconds. The unit is seoncds as well.
 2. Events: The failed login events in the past history before a successfully log in. So the `FailedCount` is counted for the length of `Events` as well.
 
 # Future Integration
 ## Message Queue (Input strategy)
-The events are better leverage either one of the message queue system for consitency, fault tolerance and system resume as a consideration. For example, using Kafka as an upstream to pass in the log in events or a downstream as an alert notification system. The message queue is able to connect the current monitoring service with other serivce to expand its capabilities and usages. Also, the message queue usaually do replicas to avoid data loss and help the service to restore from specific time point.
+The events are better leverage either one of the message queue system for consitency, fault tolerance and system recovery as a consideration. For example, using Kafka as an upstream to pass in the log in events or a downstream as an alert notification system. The message queue is able to connect the current monitoring service with other serivces to expand its capabilities and usages. Also, the message queue usaually do replications to avoid data loss and help the service to restore from specific time point or error recovery.
 
-The serivce has defined an interface to different approaches to be implemented. Please check [input.go](https://github.com/s886508/ruckus-assignment/blob/main/pkg/input/input.go) for more details. The interface can also be expanded if needed.
+The serivce has defined an interface for different input approaches to be implemented. Please check [input.go](https://github.com/s886508/ruckus-assignment/blob/main/pkg/input/input.go) for more details. The interface can also be expanded if needed.
 
 ## Storage
 Right now, the service is using in-memory to store the events, alerts. This can be achieved in such way if the data volume is extremely small. In the real world, log in events should be a high data volume events and will need other storage, such as cache, persistent storage (database etc...). It can be both to speed up the service while querying log in events. There are couple advantage of the design.
