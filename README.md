@@ -14,6 +14,7 @@ github.com/s886508/ruckus-assignment/pkg/alerting
 
 # Run the Tool
 It is only support reading events in JSON format line by line as following from a file.
+
 **Note** The `timestamp` is using default format `RFC3339` that can be load into time.Time package.
 ```json
 {"user_id":"A","timestamp":"2025-10-26T14:30:00+00:00","success":false}
@@ -26,7 +27,6 @@ It is only support reading events in JSON format line by line as following from 
 $ make run FILEPATH=testData/test2.txt
 go mod tidy
 go build -v -o ./dist/login-monitor ./cmd/login-monitor/main.go
-echo "testData/test2.txt"
 testData/test2.txt
 ./dist/login-monitor --filePath "testData/test2.txt"
 2025/10/27 21:15:28 Record fail event: 2025-10-26 14:30:00 +0000 +0000
@@ -87,6 +87,32 @@ $ make run FILEPATH=simulateTestFile.txt
   TotalAlertSent: 389
   AvgEventProcessingDuration(nanoSeconds): 80
 2025/10/28 13:23:00 Main exit
+```
+
+# Run the Unit Test
+```shell
+$ make test
+go test -v ./...
+?       github.com/s886508/ruckus-assignment/cmd/login-monitor  [no test files]
+=== RUN   TestAlertSender
+--- PASS: TestAlertSender (0.00s)
+PASS
+ok      github.com/s886508/ruckus-assignment/pkg/alerting       (cached)
+=== RUN   TestConsumerRunSequentialEvents
+...
+--- PASS: TestConsumerRunSequentialEvents (0.00s)
+=== RUN   TestConsumerRunEventsOutOfOrder
+...
+--- PASS: TestConsumerRunEventsOutOfOrder (0.00s)
+PASS
+ok      github.com/s886508/ruckus-assignment/pkg/consumer       (cached)
+?       github.com/s886508/ruckus-assignment/pkg/input  [no test files]
+?       github.com/s886508/ruckus-assignment/pkg/metric [no test files]
+=== RUN   TestLoginEventIsValid
+--- PASS: TestLoginEventIsValid (0.00s)
+PASS
+ok      github.com/s886508/ruckus-assignment/pkg/model  0.008s
+?       github.com/s886508/ruckus-assignment/testData   [no test files]
 ```
 
 # Graceful Shutdown
