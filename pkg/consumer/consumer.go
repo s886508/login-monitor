@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/s886508/ruckus-assignment/pkg/metric"
 	"github.com/s886508/ruckus-assignment/pkg/model"
 )
 
@@ -16,7 +17,7 @@ type LoginEventConsumer struct {
 	LoginFailEvents           map[string][]model.LoginEvent
 	loginFailFirstTimestamp   map[string]time.Time
 	loginSuccessLastTimestamp map[string]time.Time
-	loginFailCount            int
+	loginFailCount            map[string]int
 	alertBuffer               chan model.Alert
 	ctxCancel                 context.Context
 }
@@ -26,6 +27,7 @@ func (c *LoginEventConsumer) Init(ctx context.Context, alertBuffer chan model.Al
 	c.LoginFailEvents = make(map[string][]model.LoginEvent)
 	c.loginFailFirstTimestamp = make(map[string]time.Time)
 	c.loginSuccessLastTimestamp = make(map[string]time.Time)
+	c.loginFailCount = make(map[string]int)
 	c.alertBuffer = alertBuffer
 	c.ctxCancel = ctx
 }
@@ -38,15 +40,24 @@ func (c *LoginEventConsumer) Run() {
 	go func() {
 		defer wg.Done()
 		for {
+			start := time.Now()
 			select {
 			case e, ok := <-c.Buffer:
 				if !ok {
 					return
 				}
+
+				// Record for every event
+				metric.TotalEventProcessed++
+
+				// Check if the event is valid for processing
 				if !e.IsValid() {
 					log.Println("Invalid event")
+					metric.TotalInvalidEvents++
 					continue
 				}
+
+				log.Printf("Record event: User: %s, Timestmap: %v, Success: %v\n", e.UserID, e.Timestamp, e.Success)
 
 				// ignore the successfully login if the last one is later than cureent one
 				if c.loginSuccessLastTimestamp[e.UserID].After(e.Timestamp) {
@@ -60,19 +71,19 @@ func (c *LoginEventConsumer) Run() {
 						continue
 					}
 					// reset failed login information once login successfully
-					c.loginFailCount = 0
+					c.loginFailCount[e.UserID] = 0
 					c.loginSuccessLastTimestamp[e.UserID] = e.Timestamp
 					delete(c.loginFailFirstTimestamp, e.UserID)
 					delete(c.LoginFailEvents, e.UserID)
 					continue
 				}
 
-				log.Printf("Record fail event: %v\n", e.Timestamp)
+				metric.TotalFailedLoginEvents++
 
 				// first seen the UserID within failed log in
 				if !failSessionExist {
 					c.loginFailFirstTimestamp[e.UserID] = e.Timestamp
-					c.loginFailCount = 1
+					c.loginFailCount[e.UserID] = 1
 					c.LoginFailEvents[e.UserID] = []model.LoginEvent{e}
 					continue
 				}
@@ -86,20 +97,21 @@ func (c *LoginEventConsumer) Run() {
 						log.Printf("Fail to login > 30 secs: %v\n", firstFailTS)
 						// Record the latest failed log in
 						c.loginFailFirstTimestamp[e.UserID] = e.Timestamp
-						c.loginFailCount = 1
+						c.loginFailCount[e.UserID] = 1
 					} else {
-						c.loginFailCount++
+						c.loginFailCount[e.UserID]++
 					}
 				} else if e.Timestamp.Before(firstFailTS) && e.Timestamp.Add(30*time.Second).After(firstFailTS) {
 					c.loginFailFirstTimestamp[e.UserID] = e.Timestamp
-					c.loginFailCount++
+					c.loginFailCount[e.UserID]++
 				}
 
 				// send alert while fail to log in 3 times within 30 seconds
-				if c.loginFailCount == 3 {
+				if c.loginFailCount[e.UserID] == 3 {
 					sort.Slice(c.LoginFailEvents[e.UserID], func(i, j int) bool {
 						return c.LoginFailEvents[e.UserID][i].Timestamp.Before(c.LoginFailEvents[e.UserID][j].Timestamp)
 					})
+
 					failCount := len(c.LoginFailEvents[e.UserID])
 
 					// calculate time window for the last 3 consecutive fail log in
@@ -107,18 +119,22 @@ func (c *LoginEventConsumer) Run() {
 					end := c.LoginFailEvents[e.UserID][failCount-1].Timestamp
 					duration := end.Sub(start)
 
-					c.alertBuffer <- model.Alert{
+					alert := model.Alert{
 						UserID:      e.UserID,
 						FailedCount: failCount,
 						TimeWindow:  fmt.Sprintf("%.3f seconds", duration.Seconds()),
 						Events:      c.LoginFailEvents[e.UserID],
 					}
-					log.Println("Alert sent")
+					c.alertBuffer <- alert
+					metric.TotalAlertSent++
+					//log.Printf("Alert sent: %v\n", alert)
 				}
 			case <-c.ctxCancel.Done():
 				log.Println("Consumer close")
 				return
 			}
+			duration := time.Since(start)
+			metric.TotalProcessingDuration += duration.Seconds()
 		}
 	}()
 

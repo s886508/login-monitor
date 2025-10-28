@@ -13,6 +13,7 @@ import (
 	"github.com/s886508/ruckus-assignment/pkg/alerting"
 	"github.com/s886508/ruckus-assignment/pkg/consumer"
 	"github.com/s886508/ruckus-assignment/pkg/input"
+	"github.com/s886508/ruckus-assignment/pkg/metric"
 	"github.com/s886508/ruckus-assignment/pkg/model"
 )
 
@@ -87,11 +88,30 @@ func main() {
 
 	// Goroutine to handle the signal
 	go func() {
-		sig := <-signalChan
-		log.Printf("Received signal: %s\n", sig)
-		cancel()
+		for {
+			select {
+			case alert, ok := <-sender.OutputBuffer:
+				if !ok {
+					cancel()
+					return
+				}
+				log.Println("Received alert: " + string(alert))
+			case sig := <-signalChan:
+				log.Printf("Received signal: %s\n", sig)
+				cancel()
+				return
+			}
+		}
 	}()
 
 	wg.Wait()
+	avgProcessingDuration := metric.TotalProcessingDuration / float64(metric.TotalEventProcessed)
+	log.Printf("[Metrics] \n  TotalEventProcessed: %d\n  TotalInvalidEvents %d\n  TotalFailedLoginEvents: %d\n  TotalAlertSent: %d\n  AvgEventProcessingDuration: %.3f\n",
+		metric.TotalEventProcessed,
+		metric.TotalInvalidEvents,
+		metric.TotalFailedLoginEvents,
+		metric.TotalAlertSent,
+		avgProcessingDuration)
+
 	log.Println("Main exit")
 }

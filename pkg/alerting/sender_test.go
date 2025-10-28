@@ -32,5 +32,5 @@ func TestAlertSender(t *testing.T) {
 	wg.Wait()
 
 	assert.Empty(t, sender.Buffer)
-	assert.Len(t, sender.outputBuffer, 1)
+	assert.Len(t, sender.OutputBuffer, 1)
 }

@@ -221,7 +221,7 @@ func TestConsumerRunSequentialEvents(t *testing.T) {
 	consumer.Buffer <- model.LoginEvent{UserID: "TestUserA", Timestamp: initTime.Add(56 * time.Second), Success: false}
 	consumer.Buffer <- model.LoginEvent{UserID: "TestUserA", Timestamp: initTime.Add(57 * time.Second), Success: false}
 	consumer.Buffer <- model.LoginEvent{UserID: "TestUserB", Timestamp: initTime, Success: false}
-	consumer.Buffer <- model.LoginEvent{UserID: "TestUserB", Timestamp: initTime.Add(10 * time.Second), Success: false}
+	consumer.Buffer <- model.LoginEvent{UserID: "TestUserB", Timestamp: initTime.Add(10 * time.Second), Success: true}
 	consumer.Buffer <- model.LoginEvent{UserID: "TestUserB", Timestamp: initTime.Add(15 * time.Second), Success: false}
 	close(consumer.Buffer)
 	wg.Wait()
@@ -232,10 +232,10 @@ func TestConsumerRunSequentialEvents(t *testing.T) {
 	ts2, ok := consumer.loginFailFirstTimestamp["TestUserB"]
 	assert.True(t, ok)
 	assert.Equal(t, initTime.Add(45*time.Second), ts1)
-	assert.Equal(t, initTime, ts2)
+	assert.Equal(t, initTime.Add(15*time.Second), ts2)
 	assert.Len(t, consumer.LoginFailEvents["TestUserA"], 5)
-	assert.Len(t, consumer.LoginFailEvents["TestUserB"], 3)
-	assert.Len(t, alertBuffer, 2)
+	assert.Len(t, consumer.LoginFailEvents["TestUserB"], 1)
+	assert.Len(t, alertBuffer, 1)
 }
 
 func TestConsumerRunEventsOutOfOrder(t *testing.T) {
