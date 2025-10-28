@@ -13,7 +13,6 @@ import (
 
 type LoginEventConsumer struct {
 	Buffer                    chan model.LoginEvent
-	LoginEvents               map[string][]model.LoginEvent
 	LoginFailEvents           map[string][]model.LoginEvent
 	loginFailFirstTimestamp   map[string]time.Time
 	loginSuccessLastTimestamp map[string]time.Time
@@ -23,8 +22,7 @@ type LoginEventConsumer struct {
 }
 
 func (c *LoginEventConsumer) Init(ctx context.Context, alertBuffer chan model.Alert) {
-	c.Buffer = make(chan model.LoginEvent, 100)         // TODO: Make it configurable
-	c.LoginEvents = make(map[string][]model.LoginEvent) // TODO: Just for records at the moment, no real use case now
+	c.Buffer = make(chan model.LoginEvent, 100) // TODO: Make it configurable
 	c.LoginFailEvents = make(map[string][]model.LoginEvent)
 	c.loginFailFirstTimestamp = make(map[string]time.Time)
 	c.loginSuccessLastTimestamp = make(map[string]time.Time)
@@ -45,17 +43,9 @@ func (c *LoginEventConsumer) Run() {
 				if !ok {
 					return
 				}
-				if e.Timestamp.IsZero() {
-					log.Println("Invalid timestamp")
-					return
-				}
-
-				//log.Printf("%v, %v", e.Timestamp, c.loginFailFirstTimestamp[e.UserID])
-				// add login evnets to storage every time
-				if _, ok := c.LoginEvents[e.UserID]; ok {
-					c.LoginEvents[e.UserID] = append(c.LoginEvents[e.UserID], e)
-				} else {
-					c.LoginEvents[e.UserID] = []model.LoginEvent{e}
+				if !e.IsValid() {
+					log.Println("Invalid event")
+					continue
 				}
 
 				// ignore the successfully login if the last one is later than cureent one
@@ -77,16 +67,10 @@ func (c *LoginEventConsumer) Run() {
 					continue
 				}
 
-				// skip if the failed events timestamp is from the past time
-				/*if e.Timestamp.Before(c.loginFailLastTimestamp[e.UserID]) {
-					continue
-				}*/
-
 				log.Printf("Record fail event: %v\n", e.Timestamp)
 
 				// first seen the UserID within failed log in
 				if !failSessionExist {
-					//log.Println("First log in failed")
 					c.loginFailFirstTimestamp[e.UserID] = e.Timestamp
 					c.loginFailCount = 1
 					c.LoginFailEvents[e.UserID] = []model.LoginEvent{e}
@@ -99,7 +83,7 @@ func (c *LoginEventConsumer) Run() {
 				// The log in attempt is over 30 seconds, re-counting
 				if e.Timestamp.After(firstFailTS) {
 					if e.Timestamp.Sub(firstFailTS) > 30*time.Second {
-						log.Printf("> 30 secs: %v\n", firstFailTS)
+						log.Printf("Fail to login > 30 secs: %v\n", firstFailTS)
 						// Record the latest failed log in
 						c.loginFailFirstTimestamp[e.UserID] = e.Timestamp
 						c.loginFailCount = 1
@@ -113,7 +97,6 @@ func (c *LoginEventConsumer) Run() {
 
 				// send alert while fail to log in 3 times within 30 seconds
 				if c.loginFailCount == 3 {
-
 					sort.Slice(c.LoginFailEvents[e.UserID], func(i, j int) bool {
 						return c.LoginFailEvents[e.UserID][i].Timestamp.Before(c.LoginFailEvents[e.UserID][j].Timestamp)
 					})
