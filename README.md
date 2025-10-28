@@ -1,5 +1,5 @@
 # Description
-The program is simulating a alert system which receive login events and record the events. An alert will be trigger and being sent if there are 3 consecutive failed log in with 30 seconds.
+The program is simulating an alert system which receive log in events and record the events. An alert will be trigger and being sent if there are 3 consecutive failed log in with 30 seconds.
 
 # How to Build
 Run the following command and the binary will be build under `/dist` directory
