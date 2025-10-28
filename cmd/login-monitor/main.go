@@ -105,8 +105,8 @@ func main() {
 	}()
 
 	wg.Wait()
-	avgProcessingDuration := metric.TotalProcessingDuration / float64(metric.TotalEventProcessed)
-	log.Printf("[Metrics] \n  TotalEventProcessed: %d\n  TotalInvalidEvents %d\n  TotalFailedLoginEvents: %d\n  TotalAlertSent: %d\n  AvgEventProcessingDuration: %.3f\n",
+	avgProcessingDuration := metric.TotalProcessingDuration / metric.TotalEventProcessed
+	log.Printf("[Metrics] \n  TotalEventProcessed: %d\n  TotalInvalidEvents %d\n  TotalFailedLoginEvents: %d\n  TotalAlertSent: %d\n  AvgEventProcessingDuration(nanoSeconds): %d\n",
 		metric.TotalEventProcessed,
 		metric.TotalInvalidEvents,
 		metric.TotalFailedLoginEvents,

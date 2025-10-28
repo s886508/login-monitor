@@ -134,7 +134,7 @@ func (c *LoginEventConsumer) Run() {
 				return
 			}
 			duration := time.Since(start)
-			metric.TotalProcessingDuration += duration.Seconds()
+			metric.TotalProcessingDuration += duration.Nanoseconds()
 		}
 	}()
 
