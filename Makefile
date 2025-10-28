@@ -6,7 +6,6 @@ build:
 
 .PHONY: run
 run: build
-	echo "$(FILEPATH)"
 	./dist/login-monitor --filePath "$(FILEPATH)"
 
 .PHONY: test
